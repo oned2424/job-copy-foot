@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "status": "provisional",
+  "unit": "unicode_code_points",
+  "normalization": {
+    "unicode": "NFKC",
+    "lineBreak": "LF",
+    "trim": false,
+    "collapseWhitespace": false
+  },
+  "countingMethod": "Unicode正規化NFKC後にUnicodeコードポイント数を数える",
+  "provisionalReason": "確認できた公開ヘルプには全入力項目の最新文字数上限一覧がないため。Phase 1では明らかな超過候補を検出するための暫定値として使用し、掲載可否の保証には使わない。",
+  "canonicalSource": {
+    "description": "実数確定時は以下を上から順に確認し、このファイルを差し替える。",
+    "priority": [
+      "FooT様のAirワーク求人作成画面に表示される入力カウンター・エラー",
+      "Airワークの最新一括入稿テンプレート",
+      "Airワークの最新一括入稿用コード一覧",
+      "Airワーク管理画面の最新ヘルプ",
+      "Indeed PLUS連携時の最新エラー表示"
+    ]
+  },
+  "columns": {
+    "AX": {
+      "header": "求める人材(personal)",
+      "max": 2000,
+      "status": "provisional"
+    },
+    "BF": {
+      "header": "求人キャッチコピー(subtitle)",
+      "max": 100,
+      "status": "provisional"
+    },
+    "ES": {
+      "header": "福利厚生の補足説明(welfare)",
+      "max": 2000,
+      "status": "provisional"
+    },
+    "HV": {
+      "header": "選考についての補足説明(selection_flow)",
+      "max": 2000,
+      "status": "provisional"
+    },
+    "H": {
+      "header": "職種名(title)",
+      "max": 100,
+      "status": "provisional"
+    },
+    "O": {
+      "header": "仕事内容(description)",
+      "max": 10000,
+      "status": "provisional"
+    },
+    "AS": {
+      "header": "職場環境の補足説明(work_environment)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "ED": {
+      "header": "勤務時間・シフト・最低勤務期間の補足説明(working_time_supplement)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "EG": {
+      "header": "休日・休暇の補足説明(holiday)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "CW": {
+      "header": "給与の補足説明(salary_supplement)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "CX": {
+      "header": "給与例(salary_example)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "AP": {
+      "header": "喫煙に関する補足説明(smoking_section_supplement)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "EV": {
+      "header": "契約更新期間(contract_renewal_period)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "HS": {
+      "header": "試用・研修期間の補足説明(probationary_period_supplement)",
+      "max": 1000,
+      "status": "provisional"
+    },
+    "EP": {
+      "header": "選択できない社会保険がある場合の理由(no_social_insurance_reason)",
+      "max": 1000,
+      "status": "provisional"
+    }
+  }
+}

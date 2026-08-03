@@ -1,0 +1,4 @@
+interface:
+  display_name: "求人原稿・タグ診断"
+  short_description: "Airワーク求人のlint、タグ棚卸し、根拠付きA/B訴求案を作成"
+  default_prompt: "$job-copy を使って求人CSVを診断し、タグ棚卸しと事実を変えないA/B訴求案を作成してください。"

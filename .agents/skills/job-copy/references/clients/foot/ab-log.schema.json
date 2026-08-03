@@ -1,0 +1,168 @@
+{
+  "title": "FooT A/B訴求案結果記録",
+  "description": "1求人につき1票でA/B結果を記録し、対象列はBFまたはAXのどちらか1つに固定する。A案とB案は同時掲載せず、前半2週間A案・後半2週間B案の期間分割で比較する。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "jobNumber",
+    "targetColumn",
+    "variantA",
+    "variantB",
+    "differenceVariable",
+    "axisIds",
+    "periodA",
+    "periodB"
+  ],
+  "properties": {
+    "jobNumber": {
+      "type": "string",
+      "minLength": 1,
+      "description": "求人番号。必須。"
+    },
+    "targetColumn": {
+      "type": "string",
+      "enum": ["BF", "AX"],
+      "description": "比較対象列。必須。"
+    },
+    "variantA": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A案の本文。必須。"
+    },
+    "variantB": {
+      "type": "string",
+      "minLength": 1,
+      "description": "B案の本文。必須。"
+    },
+    "differenceVariable": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A案とB案の差分変数。必須。"
+    },
+    "axisIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A", "B"],
+      "properties": {
+        "A": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[VRS][0-9]{3}$" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "A案の根拠訴求軸ID。必須。"
+        },
+        "B": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[VRS][0-9]{3}$" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "B案の根拠訴求軸ID。必須。"
+        }
+      }
+    },
+    "periodA": {
+      "$ref": "#/definitions/testPeriod",
+      "description": "前半2週間のA案掲載期間。必須。"
+    },
+    "periodB": {
+      "$ref": "#/definitions/testPeriod",
+      "description": "後半2週間のB案掲載期間。必須。"
+    },
+    "adoptedVariant": {
+      "type": "string",
+      "enum": ["A", "B", "PENDING"],
+      "description": "テスト後に採用した案。任意。判定前はPENDING。"
+    },
+    "adoptedText": {
+      "type": "string",
+      "description": "採用した案の本文。任意。"
+    },
+    "notAdoptedText": {
+      "type": "string",
+      "description": "不採用にした案の本文。任意。"
+    },
+    "previousPeriodComparison": {
+      "$ref": "#/definitions/metrics",
+      "description": "A/Bテスト前の期間との比較に使う数字。任意。"
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "reason"],
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": ["A_WIN", "B_WIN", "DRAW", "PENDING"],
+          "description": "勝敗。"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "判断理由。"
+        }
+      },
+      "description": "勝敗の判断と理由。任意。"
+    },
+    "nextTest": {
+      "type": "string",
+      "description": "次に試すこと。任意。"
+    },
+    "recordedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "記録日。任意。"
+    },
+    "recordedBy": {
+      "type": "string",
+      "description": "記録者。任意。"
+    }
+  },
+  "definitions": {
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "impressions": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "表示回数。取得できない場合はnullまたは省略。"
+        },
+        "clicks": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "クリック数。取得できない場合はnullまたは省略。"
+        },
+        "applications": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "応募数。取得できない場合はnullまたは省略。"
+        }
+      }
+    },
+    "testPeriod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startDate", "endDate", "metrics"],
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "description": "掲載開始日。"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date",
+          "description": "掲載終了日。"
+        },
+        "metrics": {
+          "$ref": "#/definitions/metrics",
+          "description": "期間中に取得できた数字だけを記録する。"
+        },
+        "notes": {
+          "type": "string",
+          "description": "掲載条件の変更などの補足。任意。"
+        }
+      }
+    }
+  }
+}

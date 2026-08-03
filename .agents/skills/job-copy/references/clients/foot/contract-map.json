@@ -1,0 +1,458 @@
+{
+  "version": 1,
+  "clientId": "foot",
+  "csvColumns": [
+    "client_id",
+    "source_row",
+    "source_range",
+    "key",
+    "value",
+    "evidence_status"
+  ],
+  "fields": [
+    {
+      "key": "companyName",
+      "label": "企業名",
+      "sourceRow": 10,
+      "sourceRanges": [
+        "B10:X10"
+      ],
+      "ignoreValues": [],
+      "priority": "C",
+      "unlocks": [],
+      "askAs": "この内容確認書の対象となる派遣先企業名を教えてください。"
+    },
+    {
+      "key": "workSite",
+      "label": "就業先",
+      "sourceRow": 10,
+      "sourceRanges": [
+        "Z10:AZ11"
+      ],
+      "ignoreValues": [
+        "請求先"
+      ],
+      "priority": "C",
+      "unlocks": [],
+      "askAs": "実際に働く就業先の名称と所在地を教えてください。"
+    },
+    {
+      "key": "recruitmentCount",
+      "label": "募集人数",
+      "sourceRow": 27,
+      "sourceRanges": [
+        "B27:J27"
+      ],
+      "ignoreValues": [
+        "人",
+        "人　"
+      ],
+      "priority": "C",
+      "unlocks": [
+        "S044"
+      ],
+      "askAs": "今回の募集人数は何人ですか？"
+    },
+    {
+      "key": "employeeConversionNoMarker",
+      "label": "社員登用 無",
+      "sourceRow": 27,
+      "sourceRanges": [
+        "L27:U27"
+      ],
+      "ignoreValues": [
+        "無"
+      ],
+      "priority": "C",
+      "unlocks": [],
+      "askAs": "社員登用制度がない場合は、「無」の欄に印を付けてください。"
+    },
+    {
+      "key": "employeeConversionYesMarker",
+      "label": "社員登用 有",
+      "sourceRow": 27,
+      "sourceRanges": [
+        "V27:W27"
+      ],
+      "ignoreValues": [
+        "有"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R043"
+      ],
+      "askAs": "社員登用制度はありますか？ある場合は「有」の欄に印を付けてください。"
+    },
+    {
+      "key": "employeeConversionPeriod",
+      "label": "社員登用までの期間",
+      "sourceRow": 27,
+      "sourceRanges": [
+        "X27:AG27"
+      ],
+      "ignoreValues": [
+        "（期間：　　年　　ヶ月　　　　　"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R043"
+      ],
+      "askAs": "社員登用がある場合、登用までの期間の目安と判定時期を教えてください。"
+    },
+    {
+      "key": "directEmploymentSalaryRange",
+      "label": "直接雇用の待遇・年収レンジ",
+      "sourceRow": 27,
+      "sourceRanges": [
+        "AH27:AV27"
+      ],
+      "ignoreValues": [
+        "直接雇用の待遇：年収　　　　～　　　　　",
+        "円",
+        "）"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R043"
+      ],
+      "askAs": "社員登用後の雇用条件と年収レンジを教えてください。"
+    },
+    {
+      "key": "itemSizeWeight",
+      "label": "扱う物のサイズ・重さ",
+      "sourceRow": 29,
+      "sourceRanges": [
+        "AD29:AZ29"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "R099"
+      ],
+      "askAs": "扱う物の大きさと重さを、代表例と最大値で教えてください。"
+    },
+    {
+      "key": "workSummary",
+      "label": "業務内容",
+      "sourceRow": 31,
+      "sourceRanges": [
+        "B31:T31"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "R047"
+      ],
+      "askAs": "この仕事で担当する業務を、初めての方にも分かる言葉で教えてください。"
+    },
+    {
+      "key": "workDetails",
+      "label": "作業詳細",
+      "sourceRow": 31,
+      "sourceRanges": [
+        "V31:AZ31"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "R047"
+      ],
+      "askAs": "出勤から退勤までの作業の流れと、各作業で実際に行うことを教えてください。"
+    },
+    {
+      "key": "monthlyOvertimeHours",
+      "label": "残業時間",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "N33:T33"
+      ],
+      "ignoreValues": [
+        "月",
+        "～",
+        "h"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R018",
+        "S001",
+        "S063"
+      ],
+      "askAs": "この派遣先の月あたりの残業時間は、平均と繁忙期でそれぞれ何時間くらいですか？"
+    },
+    {
+      "key": "carCommute",
+      "label": "車通勤",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "V33:AB33"
+      ],
+      "ignoreValues": [
+        "　 可　 不可",
+        "可",
+        "不可"
+      ],
+      "priority": "B",
+      "unlocks": [],
+      "askAs": "車通勤は可能ですか？駐車場の有無と費用も分かれば教えてください。"
+    },
+    {
+      "key": "climateControlYesMarker",
+      "label": "冷暖房 有",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "AD33:AI33"
+      ],
+      "ignoreValues": [
+        "有"
+      ],
+      "priority": "B",
+      "unlocks": [
+        "R102",
+        "R113"
+      ],
+      "askAs": "実際に作業する場所に冷暖房はありますか？ある場合は対象範囲も教えてください。"
+    },
+    {
+      "key": "climateControlNoMarker",
+      "label": "冷暖房 無",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "AJ33:AJ33"
+      ],
+      "ignoreValues": [
+        "無"
+      ],
+      "priority": "B",
+      "unlocks": [],
+      "askAs": "冷暖房がない作業場所がある場合は、「無」の欄に印を付け、季節対策があれば教えてください。"
+    },
+    {
+      "key": "workplaceVisitDays",
+      "label": "見学までの日数",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "AL33:AP33"
+      ],
+      "ignoreValues": [
+        "日"
+      ],
+      "priority": "B",
+      "unlocks": [
+        "R125"
+      ],
+      "askAs": "応募から職場見学まで、通常は何日くらいかかりますか？見学で確認できる範囲も教えてください。"
+    },
+    {
+      "key": "startDays",
+      "label": "入社までの日数",
+      "sourceRow": 33,
+      "sourceRanges": [
+        "AR33:AV33"
+      ],
+      "ignoreValues": [
+        "日"
+      ],
+      "priority": "B",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "応募から就業開始まで、通常は何日くらいかかりますか？"
+    },
+    {
+      "key": "workTime1",
+      "label": "勤務時間①",
+      "sourceRow": 39,
+      "sourceRanges": [
+        "F39:N39"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間①の始業時刻と終業時刻を教えてください。"
+    },
+    {
+      "key": "breaks1",
+      "label": "勤務時間①の休憩",
+      "sourceRow": 39,
+      "sourceRanges": [
+        "V39:AQ39"
+      ],
+      "ignoreValues": [
+        "①",
+        "②",
+        "③",
+        "残業前",
+        ":    ~    :"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間①の休憩は、何時から何時までを何回取りますか？"
+    },
+    {
+      "key": "workTime2",
+      "label": "勤務時間②",
+      "sourceRow": 41,
+      "sourceRanges": [
+        "F41:N41"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間②がある場合、始業時刻と終業時刻を教えてください。"
+    },
+    {
+      "key": "breaks2",
+      "label": "勤務時間②の休憩",
+      "sourceRow": 41,
+      "sourceRanges": [
+        "V41:AQ41"
+      ],
+      "ignoreValues": [
+        ":    ~    :"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間②の休憩がある場合、何時から何時までを何回取りますか？"
+    },
+    {
+      "key": "workTime3",
+      "label": "勤務時間③",
+      "sourceRow": 43,
+      "sourceRanges": [
+        "F43:N43"
+      ],
+      "ignoreValues": [],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間③がある場合、始業時刻と終業時刻を教えてください。"
+    },
+    {
+      "key": "breaks3",
+      "label": "勤務時間③の休憩",
+      "sourceRow": 43,
+      "sourceRanges": [
+        "V43:AQ43"
+      ],
+      "ignoreValues": [
+        ":    ~    :"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "S063"
+      ],
+      "askAs": "勤務時間③の休憩がある場合、何時から何時までを何回取りますか？"
+    },
+    {
+      "key": "overtimeConditions",
+      "label": "残業条件",
+      "sourceRow": 45,
+      "sourceRanges": [
+        "B45:AV45"
+      ],
+      "ignoreValues": [
+        "時間超え",
+        "定時超",
+        "時",
+        "分以降",
+        "刻み",
+        "遅刻",
+        "分",
+        "早退",
+        "残業"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R006"
+      ],
+      "askAs": "残業が発生する条件と、残業時間の計算・支給ルールを教えてください。"
+    },
+    {
+      "key": "workPattern",
+      "label": "就業形態",
+      "sourceRow": 47,
+      "sourceRanges": [
+        "B47:AV47"
+      ],
+      "ignoreValues": [
+        "2交代",
+        "3交代",
+        "3勤1休",
+        "4勤2休",
+        "シフト",
+        "週",
+        "日",
+        "～",
+        "扶養内勤務"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R022",
+        "R023",
+        "R028"
+      ],
+      "askAs": "勤務は日勤固定、交代勤務、シフトなどのどの形ですか？選択できる範囲も教えてください。"
+    },
+    {
+      "key": "holidays",
+      "label": "休日",
+      "sourceRow": 49,
+      "sourceRanges": [
+        "B49:AZ51"
+      ],
+      "ignoreValues": [
+        "土",
+        "日",
+        "祝",
+        "会社📅",
+        "週休2日シフト制",
+        "シフト",
+        "月間",
+        "GW",
+        "夏季",
+        "年末年始",
+        "その他"
+      ],
+      "priority": "A",
+      "unlocks": [
+        "R014",
+        "R017",
+        "S059"
+      ],
+      "askAs": "毎週の休日、祝日の扱い、GW・夏季・年末年始の休暇日数を教えてください。"
+    },
+    {
+      "key": "uniformLoan",
+      "label": "制服貸与",
+      "sourceRow": 59,
+      "sourceRanges": [
+        "B59:AZ59"
+      ],
+      "ignoreValues": [
+        "貸与",
+        "上",
+        "下",
+        "ベルト",
+        "メット",
+        "帽子",
+        "靴",
+        "防寒着",
+        "その他"
+      ],
+      "priority": "B",
+      "unlocks": [
+        "R108"
+      ],
+      "askAs": "会社から貸与される制服・保護具・靴の範囲と、自己負担の有無を教えてください。"
+    }
+  ]
+}

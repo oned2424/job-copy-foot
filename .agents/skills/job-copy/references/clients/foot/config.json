@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "clientId": "foot",
+  "spreadsheet": {
+    "id": "1yLxgGmajRyZO6RmKX19bzvIKzCtCEhz3hLvKbf7FGQY",
+    "sheetName": "Sheet1",
+    "gid": "420701458",
+    "range": "A1:IE12",
+    "memoColumn": "JE",
+    "logSheetName": "入稿指示ログ"
+  },
+  "identity": {
+    "jobNumberColumn": "A",
+    "approvalStatusColumn": "B",
+    "publicationStatusColumn": "C"
+  },
+  "publishedStatusValues": [
+    "02"
+  ],
+  "evidenceStatuses": {
+    "extracted": "EXTRACTED_JOBLIST",
+    "candidate": "CANDIDATE",
+    "confirmedInternal": "CONFIRMED_INTERNAL",
+    "publicOfficial": "PUBLIC_OFFICIAL",
+    "missing": "MISSING",
+    "conflict": "CONFLICT"
+  },
+  "contract": {
+    "spreadsheet": {
+      "id": "1iQLTr87vdpUGYFVOzcr_7nC628xyoWl3OaBnEW0C1Jc",
+      "sheetName": "作成用",
+      "gid": "349021222"
+    },
+    "jobBindings": {}
+  },
+  "hearingLog": {
+    "spreadsheetId": "11OCj1SNIXE2sSQ54-CGKXC51Hz9blEB-4AW-Or3WKcA",
+    "sheetName": "ヒアリング履歴"
+  },
+  "outputSheets": {
+    "variantsPrefix": "訴求案_",
+    "tagAuditPrefix": "タグ診断_",
+    "protectedSheetNames": [
+      "Sheet1"
+    ]
+  },
+  "allowedEntities": {
+    "companyNames": [
+      "FooT株式会社",
+      "株式会社FooT"
+    ],
+    "assignmentSiteNames": []
+  },
+  "drive": {
+    "outputFolderId": "14iwPxbz1WpgHDlnWjnZVizRk5pnma9yO"
+  }
+}

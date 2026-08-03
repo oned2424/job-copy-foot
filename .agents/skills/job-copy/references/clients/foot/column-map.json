@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "sourceRange": "A:IE",
+  "expectedColumnCount": 239,
+  "defaultCategory": "unused",
+  "selectorSemantics": {
+    "column": "単一のExcel列記号",
+    "columns": "明示したExcel列記号の配列",
+    "range": "両端を含むExcel列範囲（例: P:AC）",
+    "except": "同じselectorのrangeから除外する列記号"
+  },
+  "categories": {
+    "copy": {
+      "description": "生成対象列（原稿）。Phase 1ではlint対象として読むだけで、書き換えない。",
+      "selectors": [
+        {
+          "columns": [
+            "AX",
+            "BF"
+          ],
+          "priority": "highest",
+          "headers": {
+            "AX": "求める人材(personal)",
+            "BF": "求人キャッチコピー(subtitle)"
+          }
+        },
+        {
+          "columns": [
+            "ES",
+            "HV"
+          ],
+          "priority": "high",
+          "headers": {
+            "ES": "福利厚生の補足説明(welfare)",
+            "HV": "選考についての補足説明(selection_flow)"
+          }
+        },
+        {
+          "columns": [
+            "H",
+            "O",
+            "AS",
+            "ED",
+            "EG",
+            "CW",
+            "CX"
+          ],
+          "priority": "medium",
+          "headers": {
+            "H": "職種名(title)",
+            "O": "仕事内容(description)",
+            "AS": "職場環境の補足説明(work_environment)",
+            "ED": "勤務時間・シフト・最低勤務期間の補足説明(working_time_supplement)",
+            "EG": "休日・休暇の補足説明(holiday)",
+            "CW": "給与の補足説明(salary_supplement)",
+            "CX": "給与例(salary_example)"
+          }
+        },
+        {
+          "columns": [
+            "AP",
+            "EV",
+            "HS",
+            "EP"
+          ],
+          "priority": "low",
+          "headers": {
+            "AP": "喫煙に関する補足説明(smoking_section_supplement)",
+            "EV": "契約更新期間(contract_renewal_period)",
+            "HS": "試用・研修期間の補足説明(probationary_period_supplement)",
+            "EP": "選択できない社会保険がある場合の理由(no_social_insurance_reason)"
+          }
+        }
+      ]
+    },
+    "tags": {
+      "description": "生成対象列（タグ）。Phase 1ではR6の矛盾検出に使うだけで、書き換えない。",
+      "selectors": [
+        {
+          "columns": [
+            "HT",
+            "HU",
+            "AQ",
+            "AR"
+          ],
+          "priority": "highest",
+          "headers": {
+            "HT": "選考の流れID(selection_flow_id)",
+            "HU": "選考の流れ(selection_flow_id_name)",
+            "AQ": "職場環境ID(work_environment_id)",
+            "AR": "職場環境(work_environment_id_name)"
+          }
+        },
+        {
+          "columns": [
+            "EQ",
+            "ER"
+          ],
+          "priority": "high",
+          "headers": {
+            "EQ": "福利厚生ID(welfare_id)",
+            "ER": "福利厚生(welfare_id_name)"
+          }
+        },
+        {
+          "columns": [
+            "EB",
+            "EC",
+            "CU",
+            "CV",
+            "EE",
+            "EF"
+          ],
+          "priority": "medium",
+          "headers": {
+            "EB": "勤務形態・勤務時間の特徴ID(working_hours_id)",
+            "EC": "勤務形態・勤務時間の特徴(working_hours_id_name)",
+            "CU": "給与の特徴ID(salary_allowance_id)",
+            "CV": "給与の特徴(salary_allowance_id_name)",
+            "EE": "休日・休暇ID(holiday_id)",
+            "EF": "休日・休暇(holiday_id_name)"
+          }
+        },
+        {
+          "range": "P:AC",
+          "priority": "medium",
+          "description": "仕事内容の特徴 7軸 ID / 名"
+        },
+        {
+          "columns": [
+            "AL",
+            "AM"
+          ],
+          "priority": "low",
+          "headers": {
+            "AL": "勤務地の特徴ID(working_location_features_id)",
+            "AM": "勤務地の特徴(working_location_features_id_name)"
+          }
+        }
+      ]
+    },
+    "immutable": {
+      "description": "不変列（事実条件・識別子・ステータス）。読むだけで変更しない。",
+      "selectors": [
+        {
+          "columns": [
+            "A",
+            "D",
+            "E",
+            "F"
+          ],
+          "description": "求人番号 / クライアントコード / 雇用形態"
+        },
+        {
+          "columns": [
+            "B",
+            "C"
+          ],
+          "description": "承認状況 / 掲載状況"
+        },
+        {
+          "range": "I:N",
+          "description": "職種1〜3 CD / 名"
+        },
+        {
+          "range": "AD:AK",
+          "description": "勤務地種別 / 番号 / 名 / 郵便番号 / 都道府県 / 市区町村"
+        },
+        {
+          "range": "AY:BE",
+          "description": "年齢の制限 / 事由 / 性別の制限 / 事由（法令フィールド）"
+        },
+        {
+          "range": "BG:BP",
+          "description": "募集イメージ数 / 採用予定人数 / 給与形態 / 給与額範囲 / 下限 / 上限"
+        },
+        {
+          "range": "CY:CZ",
+          "description": "勤務形態"
+        },
+        {
+          "range": "EH:EO",
+          "description": "社会保険4種"
+        },
+        {
+          "range": "EW:EZ",
+          "description": "試用・研修期間"
+        },
+        {
+          "columns": [
+            "GN",
+            "GO"
+          ],
+          "description": "試用・研修期間"
+        }
+      ]
+    },
+    "unused": {
+      "description": "対象外。明示範囲に加え、他の3分類に列挙されない列はdefaultCategoryによりunusedとする。",
+      "selectors": [
+        {
+          "range": "BQ:CT"
+        },
+        {
+          "range": "DA:EA"
+        },
+        {
+          "range": "FB:HR",
+          "except": [
+            "GN",
+            "GO",
+            "HS"
+          ]
+        },
+        {
+          "range": "HW:IE"
+        }
+      ]
+    }
+  }
+}
