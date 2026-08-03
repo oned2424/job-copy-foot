@@ -144,20 +144,30 @@ python3 -m pip install --upgrade google-api-python-client google-auth
 
 ## 2. スキルを配置する
 
-配布は Git で行います。市野から次の2つを受け取ってください。
+配布は Git で行います。配布リポジトリは次の1つです。
 
-- 配布リポジトリのURL
-- そのリポジトリへの招待（GitHubアカウントが要ります。持っていなければ市野が作成を案内します）
+```text
+https://github.com/oned2424/job-copy-foot
+```
+
+**privateリポジトリのため、招待を受けたGitHubアカウントでしか開けません。**
+市野から招待メールが届いていることを確認してください。GitHubアカウントを持っていない場合は、
+先に https://github.com/signup で作成し、そのユーザー名を市野に伝えてください。
 
 **Windowsの方は Ubuntu のターミナルで**、macOSの方はターミナルで実行します。
 
 ```bash
 cd ~
-git clone <案内された配布リポジトリURL> job-copy-work
+git clone https://github.com/oned2424/job-copy-foot.git job-copy-work
 cd job-copy-work
 ```
 
-初回だけ、GitHubのユーザー名とアクセストークンを聞かれます。
+初回だけ、GitHubのユーザー名とパスワードを聞かれます。
+**ここで聞かれるパスワードは、GitHubのログインパスワードではなく「アクセストークン」です。**
+GitHubにログインした状態で https://github.com/settings/tokens にアクセスし、
+`Generate new token (classic)` から `repo` にチェックを入れて作成した文字列を貼り付けてください。
+トークンは一度しか表示されないので、作成時に控えておきます。
+
 `git` が入っていない場合は、Ubuntu なら `sudo apt-get install -y git` で入れます。
 
 スキルが更新されたときは、同じフォルダで次を実行すれば最新になります。
