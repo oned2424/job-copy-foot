@@ -53,5 +53,17 @@
   },
   "drive": {
     "outputFolderId": "14iwPxbz1WpgHDlnWjnZVizRk5pnma9yO"
+  },
+  "adsPerformance": {
+    "spreadsheet": {
+      "id": "",
+      "sheetName": ""
+    },
+    "thresholds": {
+      "minImpressions": 1000,
+      "minClicks": 30,
+      "weakRatio": 0.7,
+      "finishWeakRatio": 0.6
+    }
   }
 }

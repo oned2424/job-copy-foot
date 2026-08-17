@@ -1,4 +1,20 @@
 # job-copy 初期設定と実行手順
+git URL：
+https://github.com/oned2424/job-copy-foot
+
+下記スキルで求人原稿を作ってください。
+スキル:
+/Users/apple/Library/CloudStorage/GoogleDrive-yuma2433@gmail.com/マイドライブ/ObsidianVault/20_AIカンパニー/事業部/005_岡崎AI会_home/005_PJ/005_人材会社システム/000_共通スキル/.agents/skills/job-copy/SKILL.md
+
+テスト1
+■ 派遣先        ：豊臣機工
+■ 事業所        ：安城
+■ 職種          ：リフトで出荷作業
+■ 任せる仕事     ：倉庫作業
+■ 勤務時間・シフト：8:00-17:00
+■ 時給          ：2000円
+■ 採用予定人数   ：1名
+
 
 この手順書は、FooT様の担当者がスキルを動かせる状態にし、求人原稿の公開前チェック、タグ棚卸し、A〜E 5案の作成までを実行できるようになるまでを説明します。上から順に進めてください。
 
@@ -459,7 +475,7 @@ cd .agents/skills/job-copy
 ng=0
 for f in apply_plan client_config collect_siblings export_csv fetch_current hearing_log \
          init_client init_hearing_log make_entry_doc precheck_doc push_to_joblist \
-         read_contract secure_tmp style_entry_doc; do
+         read_ads_performance read_contract secure_tmp style_entry_doc; do
   python3 scripts/$f.py --self-test > /dev/null 2>&1 \
     && printf '  OK   %s.py\n' "$f" || { printf '  NG   %s.py\n' "$f"; ng=1; }
 done
@@ -471,13 +487,13 @@ for f in audit_tags generate_variants lint_copy; do
   node scripts/$f.mjs --self-test --client foot > /dev/null 2>&1 \
     && printf '  OK   %s.mjs\n' "$f" || { printf '  NG   %s.mjs\n' "$f"; ng=1; }
 done
-[ $ng -eq 0 ] && echo '==== 全23本 通過 ====' || echo '==== 失敗あり ===='
+[ $ng -eq 0 ] && echo '==== 全24本 通過 ====' || echo '==== 失敗あり ===='
 ```
 
-**23本すべてが `OK` になれば正常です。**
+**24本すべてが `OK` になれば正常です。**
 `NG` が1つでも出る場合は配布が壊れているので、自分で直さず市野へ連絡してください。
 
-- Pythonの13本は `self-test OK` という行を出します。`read_contract.py` だけはJSONを返します。
+- Pythonの15本は `self-test OK` という行を出します。`read_contract.py` だけはJSONを返します。
 - Nodeの9本はJSONを返します。
 - `audit_tags` `generate_variants` `lint_copy` の3本は `--client foot` が必要です。
   付け忘れると失敗します。
