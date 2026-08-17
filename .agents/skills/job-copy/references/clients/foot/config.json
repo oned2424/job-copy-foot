@@ -56,14 +56,19 @@
   },
   "adsPerformance": {
     "spreadsheet": {
-      "id": "",
-      "sheetName": ""
+      "id": "1QeyoCM1yybH5P3MuQK9Qi8-n3uB1MUhTJwvJtXpXWOo",
+      "sheetName": "",
+      "sheetHint": "求人単位"
     },
     "thresholds": {
       "minImpressions": 1000,
       "minClicks": 30,
+      "minClicksForStartRate": 150,
+      "minStartsForFinishRate": 40,
       "weakRatio": 0.7,
-      "finishWeakRatio": 0.6
+      "finishWeakRatio": 0.6,
+      "winnerMinRatio": 1.2,
+      "winnerMinStartRateRatio": 0.9
     }
   }
 }

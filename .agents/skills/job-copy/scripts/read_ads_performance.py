@@ -30,6 +30,7 @@ import os
 import re
 import statistics
 import sys
+import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -64,19 +65,34 @@ ADS_COLUMNS = {
 REQUIRED_COLUMNS = ("jobContent", "impressions", "clicks", "starts", "applies")
 
 # 判定のしきい値。会社ごとに変えられるよう config.json 側で上書きできる。
+#
+# 母数は指標ごとに分けて数える。3つの率は分母が違うからである。
+#   クリック率   分母は表示数     → 表示2万なら偶然のブレはほぼ無い
+#   応募開始率   分母はクリック数 → クリック30では、真の率が25%でも17.5%を割る確率が約20%ある
+#   応募完了率   分母は応募開始数 → 開始10では、真の率が60%でも36%を割る確率が約5%ある
+# 表示数とクリック数だけを見て3つとも判定すると、後ろの2つが偶然で赤くなる。
 DEFAULT_THRESHOLDS = {
     # 母数が無い求人を「弱い」と判定すると、掲載したばかりの求人を毎回書き直すことになる。
     "minImpressions": 1000,
     "minClicks": 30,
+    # 応募開始率を判定してよいクリック数。
+    "minClicksForStartRate": 150,
+    # 応募完了率を判定してよい応募開始数。
+    "minStartsForFinishRate": 40,
     # 中央値の何倍を下回ったら弱いと見なすか。
     "weakRatio": 0.7,
     # 応募完了率だけは原稿の外の話なので、はっきり低いときだけ拾う。
     "finishWeakRatio": 0.6,
+    # 勝ちパターンとして素材に使う下限。中央値と大差ない求人を「勝ち」と呼ばない。
+    "winnerMinRatio": 1.2,
+    # クリックは取れるが応募に進まない求人は素材にしない（釣りの文言を増やさない）。
+    "winnerMinStartRateRatio": 0.9,
 }
 
 # 診断コード → (表示名, 直す欄, 直す欄の名前)
 DIAGNOSIS = {
     "INSUFFICIENT_DATA": ("母数不足・判定しない", [], "もう少し配信してから見る"),
+    "PARTIAL_DATA": ("一部は判定できない", [], "判定できた範囲では弱くない。残りは配信待ち"),
     "OUTSIDE_COPY": ("原稿の外", [], "選考フロー・応募フォーム側（No.155ほか）"),
     "ENTRY_WEAK": ("入口が弱い", ["3", "33"], "職種名・求人キャッチコピー"),
     "BODY_WEAK": ("中身が弱い", ["7", "28"], "仕事内容・求める人材"),
@@ -84,6 +100,8 @@ DIAGNOSIS = {
                   "職種名・キャッチ・仕事内容・求める人材"),
     "HEALTHY": ("手をつけない", [], "現状維持"),
 }
+# 原稿を直す診断。優先順位（gainEstimate）に載せるのはこれだけ。
+REWRITE_CODES = ("ENTRY_WEAK", "BODY_WEAK", "BOTH_WEAK")
 
 
 def to_num(value):
@@ -107,6 +125,41 @@ def to_num(value):
     except ValueError:
         return None
     return n / 100 if percent else n
+
+
+DEFAULT_SHEET_HINT = "求人単位"
+_YEAR_MONTH = re.compile(r"(20\d{2})\s*[-_/年.]?\s*(0[1-9]|1[0-2])")
+
+
+def nfc(text):
+    """濁点を分けて持つ表記（NFD）を1文字に畳む。
+
+    Google ドライブ経由で付けたファイル名・タブ名は「ダ」が「タ」＋濁点の2文字で
+    返ってくることがある。見た目が同じなのに `in` が当たらないので、照合の前に必ず通す。
+    表示は原文のままにする（表記を書き換えない）。
+    """
+    return unicodedata.normalize("NFC", str(text))
+
+
+def pick_sheet(titles, hint=DEFAULT_SHEET_HINT):
+    """タブ一覧から、読むべき求人単位タブを1つ選ぶ。
+
+    毎月タブを足していく運用を前提にする。年月が読めるタブがあれば一番新しいもの、
+    無ければ一番右（＝新しいタブは右に足す）を採る。選べなければ None。
+    """
+    key = nfc(hint)
+    cands = [t for t in titles if key in nfc(t)]
+    if not cands:
+        return None
+    dated = []
+    for i, t in enumerate(cands):
+        m = _YEAR_MONTH.search(str(t))
+        if m:
+            dated.append((m.group(1) + m.group(2), i, t))
+    if dated:
+        dated.sort()
+        return dated[-1][2]
+    return cands[-1]
 
 
 def find_header(rows):
@@ -187,7 +240,7 @@ def build_joblist_index(values, published_values):
 
 
 def parse_rows(rows):
-    """実績シート → レコードのリスト。数値が読めない行は落とす。"""
+    """実績シート → (レコードのリスト, 落とした行). 数値が読めない行は落とす。"""
     head = find_header(rows)
     if head is None:
         raise SystemExit("NG: 「求人内容」と「表示数」を含む見出し行が見つかりません。"
@@ -198,6 +251,7 @@ def parse_rows(rows):
         raise SystemExit(f"NG: 必要な列がありません: {missing}（見出し行={head + 1}行目）")
 
     out = []
+    dropped = []
     for row in rows[head + 1:]:
         if not row:
             continue
@@ -209,8 +263,22 @@ def parse_rows(rows):
             if name == "jobContent":
                 continue
             rec[name] = row[i] if len(row) > i else ""
+        # 数字が読めない行を0で埋めると「クリック率0%＝入口が壊滅」と誤診する。
+        # 空欄は0（計測して0）、読めない文字が入っていた行は入力不正として落とす。
+        bad = None
         for name in ("impressions", "clicks", "starts", "applies", "cost"):
-            rec[name] = to_num(rec.get(name)) or 0
+            raw = rec.get(name)
+            if raw is None or str(raw).strip() == "":
+                rec[name] = 0
+                continue
+            n = to_num(raw)
+            if n is None:
+                bad = f"{name}='{raw}'"
+                break
+            rec[name] = n
+        if bad:
+            dropped.append({"jobContent": content, "reason": bad})
+            continue
         # 率は元の列を使わず、実数から引き直す。表示桁で丸めた率で判定すると
         # 母数の小さい求人ほど誤差が乗る。
         rec["ctr"] = rec["clicks"] / rec["impressions"] if rec["impressions"] else 0.0
@@ -218,34 +286,78 @@ def parse_rows(rows):
         rec["finishRate"] = rec["applies"] / rec["starts"] if rec["starts"] else 0.0
         rec["applyRate"] = rec["applies"] / rec["clicks"] if rec["clicks"] else 0.0
         out.append(rec)
-    return out
+    return out, dropped
 
 
 def has_enough_data(rec, th):
+    """クリック率を判定してよいか（分母＝表示数）。"""
     return (rec["impressions"] >= th["minImpressions"]
             and rec["clicks"] >= th["minClicks"])
 
 
+def can_judge_start_rate(rec, th):
+    """応募開始率を判定してよいか（分母＝クリック数）。"""
+    return rec["clicks"] >= th["minClicksForStartRate"]
+
+
+def can_judge_finish_rate(rec, th):
+    """応募完了率を判定してよいか（分母＝応募開始数）。"""
+    return rec["starts"] >= th["minStartsForFinishRate"]
+
+
+def usable(records):
+    """基準値と素材に使ってよい求人＝求人番号を一意に引き当てられたものだけ。
+
+    引き当てに失敗した行は、掲載を止めた求人の残骸か、実績期間中に原稿を
+    書き換えた求人である。どちらも「今の掲載中の相場」を表さないので、
+    中央値にも勝ちパターンにも入れない。
+    """
+    return [r for r in records if r.get("match") == "OK"]
+
+
 def baseline(records, th):
-    """母数のある求人だけで中央値を出す。ここが全判定の基準になる。"""
-    live = [r for r in records if has_enough_data(r, th)]
+    """母数のある求人だけで中央値を出す。ここが全判定の基準になる。
+
+    3つの率は分母が違うので、母数の判定も別々に行う。クリックが30しか
+    無い求人の応募開始率を中央値に混ぜると、基準そのものがブレる。
+    """
+    pool = usable(records)
+    live = [r for r in pool if has_enough_data(r, th)]
     if not live:
         return None
+    start_pool = [r for r in pool if can_judge_start_rate(r, th)]
+    finish_pool = [r for r in pool if can_judge_finish_rate(r, th)]
     return {
         "ctr": statistics.median(r["ctr"] for r in live),
-        "startRate": statistics.median(r["startRate"] for r in live),
-        "finishRate": statistics.median(r["finishRate"] for r in live),
+        "startRate": (statistics.median(r["startRate"] for r in start_pool)
+                      if start_pool else None),
+        "finishRate": (statistics.median(r["finishRate"] for r in finish_pool)
+                       if finish_pool else None),
         "sampleSize": len(live),
+        "sampleSizes": {"ctr": len(live), "startRate": len(start_pool),
+                        "finishRate": len(finish_pool)},
     }
 
 
 def diagnose(rec, base, th):
-    """1求人の判定コードを返す。基準が作れないときは全件「判定しない」。"""
+    """1求人の判定コードを返す。基準が作れないときは全件「判定しない」。
+
+    母数が足りない指標は「弱くない」ではなく「判定しない」。
+    クリック30で応募開始率を見ると、真の率が基準どおりでも2割の確率で
+    赤くなる。足りない指標が残ったまま他が弱くなければ PARTIAL_DATA。
+    """
     if base is None or not has_enough_data(rec, th):
         return "INSUFFICIENT_DATA"
     weak_entry = rec["ctr"] < base["ctr"] * th["weakRatio"]
-    weak_body = rec["startRate"] < base["startRate"] * th["weakRatio"]
-    weak_finish = rec["finishRate"] < base["finishRate"] * th["finishWeakRatio"]
+
+    body_judgeable = can_judge_start_rate(rec, th) and base["startRate"] is not None
+    weak_body = (body_judgeable
+                 and rec["startRate"] < base["startRate"] * th["weakRatio"])
+
+    finish_judgeable = can_judge_finish_rate(rec, th) and base["finishRate"] is not None
+    weak_finish = (finish_judgeable
+                   and rec["finishRate"] < base["finishRate"] * th["finishWeakRatio"])
+
     if weak_entry and weak_body:
         return "BOTH_WEAK"
     if weak_entry:
@@ -254,30 +366,61 @@ def diagnose(rec, base, th):
         return "BODY_WEAK"
     if weak_finish:
         return "OUTSIDE_COPY"
+    if not body_judgeable or not finish_judgeable:
+        return "PARTIAL_DATA"
     return "HEALTHY"
 
 
-def gain_estimate(rec, base, th):
+def unjudged_metrics(rec, base, th):
+    """母数が足りずに判定できなかった指標の名前を返す。"""
+    out = []
+    if not has_enough_data(rec, th):
+        return ["クリック率", "応募開始率", "応募完了率"]
+    if not can_judge_start_rate(rec, th) or (base and base["startRate"] is None):
+        out.append("応募開始率")
+    if not can_judge_finish_rate(rec, th) or (base and base["finishRate"] is None):
+        out.append("応募完了率")
+    return out
+
+
+def gain_estimate(rec, base, th, code):
     """中央値まで戻したとき応募が何件増えるか。優先順位はこれで並べる。
 
     「率がいちばん低い求人」から直すと、表示数の少ない求人ばかり並んで
     手間の割に応募が増えない。増える件数で並べ替える。
+
+    原稿を直さない診断（健全・原稿の外・母数不足）では0にする。
+    ここに数字が付くと、触らないと決めた求人が着手リストの上に並ぶ。
     """
-    if base is None or not has_enough_data(rec, th):
+    if code not in REWRITE_CODES or base is None:
+        return 0.0
+    if base["startRate"] is None or base["finishRate"] is None:
         return 0.0
     ideal = rec["impressions"] * base["ctr"] * base["startRate"] * base["finishRate"]
     return max(0.0, ideal - rec["applies"])
 
 
 def winners(records, base, th, limit=5):
-    """クリック率が高い求人の入口の文言。A〜E案を作るときの素材にする。
+    """クリック率が基準を明確に上回っている求人の入口の文言。A〜E案の素材。
 
     「勝っている求人の書き方」は同じ会社・同じ媒体の中にしかない。
     外部の一般論より、隣の求人が実際に取れている言い回しの方が当たる。
+
+    ただし上位から機械的に5件取ると、全部が中央値と大差なくても
+    「勝ちパターン」という名前が付いてしまう。下限を置き、該当が
+    0件のときは0件のまま返す。
+    また、クリックは取れるのに応募開始率が基準を下回る求人は外す。
+    クリックだけを誘う言い回しを素材にすると、同じ失敗を横に広げる。
     """
-    live = [r for r in records if has_enough_data(r, th)]
-    if not live or base is None:
+    if base is None or not base["ctr"]:
         return []
+    floor = base["ctr"] * th["winnerMinRatio"]
+    live = [r for r in usable(records)
+            if has_enough_data(r, th) and r["ctr"] >= floor]
+    if base["startRate"] is not None:
+        start_floor = base["startRate"] * th["winnerMinStartRateRatio"]
+        live = [r for r in live
+                if not can_judge_start_rate(r, th) or r["startRate"] >= start_floor]
     live.sort(key=lambda r: -r["ctr"])
     out = []
     for rec in live[:limit]:
@@ -287,7 +430,7 @@ def winners(records, base, th, limit=5):
             "title": title,
             "subtitle": subtitle,
             "ctr": round(rec["ctr"], 4),
-            "ctrVsMedian": round(rec["ctr"] / base["ctr"], 2) if base["ctr"] else None,
+            "ctrVsMedian": round(rec["ctr"] / base["ctr"], 2),
         })
     return out
 
@@ -297,7 +440,7 @@ def build_report(ads_rows, joblist_values, cfg):
     th.update((cfg.get("adsPerformance") or {}).get("thresholds") or {})
     published = set(cfg.get("publishedStatusValues") or [])
 
-    records = parse_rows(ads_rows)
+    records, dropped = parse_rows(ads_rows)
     book, live_count = build_joblist_index(joblist_values, published)
 
     matched = ambiguous = 0
@@ -324,7 +467,8 @@ def build_report(ads_rows, joblist_values, cfg):
         rec["diagnosisLabel"] = label
         rec["focusFields"] = fields
         rec["focusFieldNames"] = target
-        rec["gainEstimate"] = round(gain_estimate(rec, base, th), 1)
+        rec["unjudged"] = unjudged_metrics(rec, base, th)
+        rec["gainEstimate"] = round(gain_estimate(rec, base, th, code), 1)
 
     ranked = sorted(records, key=lambda r: -r["gainEstimate"])
     for i, rec in enumerate(ranked, 1):
@@ -340,7 +484,9 @@ def build_report(ads_rows, joblist_values, cfg):
             "matched": matched,
             "ambiguous": ambiguous,
             "notFound": len(records) - matched - ambiguous,
+            "droppedRows": len(dropped),
         },
+        "dropped": dropped,
         "jobs": jobs,
         "records": ranked,
         "winners": winners(records, base, th),
@@ -352,13 +498,22 @@ def print_summary(report, top=10):
     base = report["baseline"]
     print(f"実績 {m['adsRows']}件 / Joblist掲載中 {m['joblistPublished']}件 → "
           f"引き当て {m['matched']}件・複数候補 {m['ambiguous']}件・該当なし {m['notFound']}件")
+    if m.get("droppedRows"):
+        print(f"※ 数値が読めない行を {m['droppedRows']}件 落としました（0として扱っていません）")
+        for d in report.get("dropped", [])[:5]:
+            print(f"   - {d['jobContent'][:30]}… {d['reason']}")
+    if m["matched"] < m["adsRows"]:
+        print("※ 引き当てできなかった行は、基準値にも勝ちパターンにも入れていません")
     if not base:
         print("※ 母数のある求人が無いため判定できません（配信量が足りない）")
         return
-    print(f"基準（掲載中の中央値・n={base['sampleSize']}）"
-          f" クリック率 {base['ctr'] * 100:.1f}%"
-          f" / 応募開始率 {base['startRate'] * 100:.1f}%"
-          f" / 応募完了率 {base['finishRate'] * 100:.1f}%")
+    n = base["sampleSizes"]
+    def _pct(v):
+        return f"{v * 100:.1f}%" if v is not None else "判定に足る母数なし"
+    print(f"基準（引き当て済みの中央値）"
+          f" クリック率 {_pct(base['ctr'])}(n={n['ctr']})"
+          f" / 応募開始率 {_pct(base['startRate'])}(n={n['startRate']})"
+          f" / 応募完了率 {_pct(base['finishRate'])}(n={n['finishRate']})")
 
     counts = {}
     for rec in report["records"]:
@@ -375,9 +530,13 @@ def print_summary(report, top=10):
               f"  表示{int(rec['impressions']):,} 応募{int(rec['applies'])}件")
 
     if report["winners"]:
-        print("\nクリック率が高い求人の入口（A〜E案の素材）")
+        print("\nクリック率が中央値を明確に上回る求人の入口（A〜E案の素材）")
         for w in report["winners"]:
             print(f"  中央値の{w['ctrVsMedian']}倍  {w['title']}｜{w['subtitle']}")
+    else:
+        ratio = report["thresholds"]["winnerMinRatio"]
+        print(f"\n※ クリック率が中央値の{ratio}倍を超える求人はありません。"
+              "社内に流用できる勝ちパターンが無いので、素材は使わずに書きます")
 
 
 def _self_test():
@@ -401,6 +560,23 @@ def _self_test():
     assert find_header(decorated) == 3
     assert find_header([["関係ない"], ["列"]]) is None
     assert column_index(head)["applies"] == 7
+
+    # タブの自動選択。年月が読めればその最大、無ければ一番右。
+    assert pick_sheet(["項目定義", "配信日単位_FooT", "求人単位_FooT"]) == "求人単位_FooT"
+    assert pick_sheet(["求人単位_202607", "求人単位_202609", "求人単位_202608"]) \
+        == "求人単位_202609"
+    assert pick_sheet(["求人単位_2026-09", "求人単位_2026-10"]) == "求人単位_2026-10"
+    # 年月ありと無しが混在したら、年月が読める側を採る（無印は初回ぶんのことが多い）
+    assert pick_sheet(["求人単位_202609", "求人単位_ダミー"]) == "求人単位_202609"
+    # hint でダミータブを除外できること
+    assert pick_sheet(["sponsor_求人単位_ダミー", "sponsor_求人単位_FooT"],
+                      "sponsor_求人単位_FooT") == "sponsor_求人単位_FooT"
+    assert pick_sheet(["項目定義", "配信日単位_FooT"]) is None
+    assert pick_sheet([]) is None
+    # Google ドライブ由来の NFD（「ダ」＝「タ」＋濁点）でも当たること。返すのは原文
+    nfd = unicodedata.normalize("NFD", "sponsor_求人単位_ダミー")
+    assert nfd != "sponsor_求人単位_ダミー" and nfc(nfd) == "sponsor_求人単位_ダミー"
+    assert pick_sheet([nfd], "求人単位_ダミー") == nfd
 
     def row(content, imp, clk, sta, app):
         return [content, imp, "", clk, "", sta, "", app, clk * 200]
@@ -427,7 +603,8 @@ def _self_test():
 
     rep = build_report(ads, joblist, {"publishedStatusValues": ["02"]})
     assert rep["match"] == {"adsRows": 17, "joblistPublished": 17,
-                            "matched": 17, "ambiguous": 0, "notFound": 0}, rep["match"]
+                            "matched": 17, "ambiguous": 0, "notFound": 0,
+                            "droppedRows": 0}, rep["match"]
     got = {n: rep["jobs"][n]["diagnosis"] for n in
            ("9101", "9102", "9103", "9104", "9105", "9000")}
     assert got == {"9101": "ENTRY_WEAK", "9102": "BODY_WEAK", "9103": "BOTH_WEAK",
@@ -444,11 +621,54 @@ def _self_test():
     assert rep["jobs"]["9103"]["gainEstimate"] > rep["jobs"]["9101"]["gainEstimate"]
     assert rep["records"][0]["jobNumber"] == "9103"
     assert rep["baseline"]["sampleSize"] == 16
+    # 指標ごとに実効母数を別で数える（分母が違うため）
+    assert rep["baseline"]["sampleSizes"] == {"ctr": 16, "startRate": 16,
+                                              "finishRate": 14}, rep["baseline"]
+    # 健全12件はどれも中央値ちょうど。「勝ちパターン」と呼べる求人は無いので0件を返す
+    assert rep["winners"] == [], rep["winners"]
 
     # 実績側に無い求人・Joblist側に無い求人
     rep2 = build_report([head, row("派遣社員｜知らない｜求人", 10000, 500, 125, 75)],
                         joblist, {"publishedStatusValues": ["02"]})
     assert rep2["match"]["notFound"] == 1 and rep2["jobs"] == {}
+
+    # 引き当てできなかった行は、基準値にも勝ちパターンにも入れない
+    ads_ng = list(ads) + [row("派遣社員｜未引当｜キャッチ", 10000, 3000, 750, 450)]
+    rep_ng = build_report(ads_ng, joblist, {"publishedStatusValues": ["02"]})
+    assert rep_ng["match"]["notFound"] == 1
+    assert rep_ng["baseline"]["ctr"] == rep["baseline"]["ctr"]
+    assert rep_ng["baseline"]["sampleSize"] == 16
+    assert rep_ng["winners"] == [], rep_ng["winners"]
+
+    # 数値が読めない行は0にせず落とす（クリック率0%＝入口壊滅と誤診しない）
+    rep_bad = build_report([head, row("派遣社員｜数値不正｜キャッチ", "—", 500, 125, 75)],
+                           joblist, {"publishedStatusValues": ["02"]})
+    assert rep_bad["match"]["droppedRows"] == 1, rep_bad["match"]
+    assert rep_bad["records"] == [] and rep_bad["baseline"] is None
+
+    # 応募開始数が少ない求人を「原稿の外」と断定しない
+    ads_p = list(ads) + [row("派遣社員｜開始少｜キャッチ", 3000, 150, 38, 2)]
+    joblist_p = list(joblist) + [["9106", "", "02", "派遣社員", "開始少", "キャッチ"]]
+    rep_p = build_report(ads_p, joblist_p, {"publishedStatusValues": ["02"]})
+    assert rep_p["jobs"]["9106"]["diagnosis"] == "PARTIAL_DATA", rep_p["jobs"]["9106"]
+    assert rep_p["jobs"]["9106"]["unjudged"] == ["応募完了率"]
+    assert rep_p["jobs"]["9106"]["gainEstimate"] == 0.0
+
+    # 中央値を明確に上回り、応募開始率も落ちていない求人だけが素材になる
+    ads_w = list(ads) + [row("派遣社員｜勝ち｜キャッチ", 10000, 700, 175, 105)]
+    joblist_w = list(joblist) + [["9107", "", "02", "派遣社員", "勝ち", "キャッチ"]]
+    rep_w = build_report(ads_w, joblist_w, {"publishedStatusValues": ["02"]})
+    assert [w["jobNumber"] for w in rep_w["winners"]] == ["9107"], rep_w["winners"]
+
+    # クリックは取れるが応募に進まない求人は素材にしない（釣りを横に広げない）
+    ads_x = list(ads) + [row("派遣社員｜釣り｜キャッチ", 10000, 700, 70, 42)]
+    joblist_x = list(joblist) + [["9108", "", "02", "派遣社員", "釣り", "キャッチ"]]
+    rep_x = build_report(ads_x, joblist_x, {"publishedStatusValues": ["02"]})
+    assert rep_x["winners"] == [], rep_x["winners"]
+
+    # 手をつけない診断に優先順位の数字が付かない
+    assert rep["jobs"]["9000"]["gainEstimate"] == 0.0
+    assert rep["jobs"]["9104"]["gainEstimate"] == 0.0
 
     # しきい値を config で上げれば、母数不足の線も動く
     rep3 = build_report(ads, joblist, {
@@ -495,9 +715,9 @@ def main():
     ads_cfg = (cfg.get("adsPerformance") or {}).get("spreadsheet") or {}
     ads_id = extract_id(a.spreadsheet) or ads_cfg.get("id")
     ads_sheet = a.sheet or ads_cfg.get("sheetName")
-    if not ads_id or not ads_sheet:
-        p.error("広告実績の場所が分かりません。--spreadsheet と --sheet を渡すか、"
-                f"{a.client}/config.json の adsPerformance.spreadsheet に書いてください")
+    if not ads_id:
+        p.error("広告実績のスプレッドシートが分かりません。--spreadsheet を渡すか、"
+                f"{a.client}/config.json の adsPerformance.spreadsheet.id に書いてください")
 
     joblist = cfg.get("spreadsheet") or {}
     if not joblist.get("id"):
@@ -512,6 +732,34 @@ def main():
         return sh.values().get(spreadsheetId=sid, range=rng,
                                valueRenderOption="UNFORMATTED_VALUE"
                                ).execute().get("values", [])
+
+    # どのファイルの、どのタブを読んだのかは黙らない。
+    # 古い月・差し替え前のダミーを読んでいても、出さなければ誰も気づかない。
+    meta = sh.get(spreadsheetId=ads_id,
+                  fields="properties.title,sheets.properties.title").execute()
+    book_title = (meta.get("properties") or {}).get("title") or "(名称不明)"
+    titles = [s["properties"]["title"] for s in meta.get("sheets", [])]
+    print(f"広告実績のファイル: {book_title}")
+    # 検証データのまま本番運用に入ってしまう事故を防ぐ。ファイル名にこの語が
+    # 残っているかぎり出し続ける。消す方法は「実データに入れ替えて名前を直す」だけ。
+    hit = [w for w in ("ダミー", "サンプル", "テスト") if w in nfc(book_title)]
+    if hit:
+        print(f"  ※ このファイルはまだ本番の実績ではありません（名前に「{hit[0]}」が入っています）。"
+              "\n     AirWorkからエクスポートした実データを新しいタブとして足し、"
+              "ファイル名からその語を外すと、この行は消えます")
+
+    if not ads_sheet:
+        # タブ名を毎回聞かない。月別タブが増えていく運用なので、こちらで最新を選ぶ。
+        hint = ads_cfg.get("sheetHint") or DEFAULT_SHEET_HINT
+        ads_sheet = pick_sheet(titles, hint)
+        if not ads_sheet:
+            raise SystemExit(
+                f"NG: 「{hint}」を含むタブがありません。タブ一覧: {titles}\n"
+                f"    --sheet で直接指定するか、{a.client}/config.json の "
+                "adsPerformance.spreadsheet.sheetHint を直してください")
+        print(f"広告実績のタブ: {ads_sheet}（「{hint}」を含むタブのうち最新を自動で選択）")
+    else:
+        print(f"広告実績のタブ: {ads_sheet}（指定されたもの）")
 
     ads_rows = read(ads_id, f"'{ads_sheet}'!A1:Z")
     if not ads_rows:

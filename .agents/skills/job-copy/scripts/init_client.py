@@ -51,25 +51,34 @@ BLANK_CONFIG = {
                          "missing": "MISSING", "conflict": "CONFLICT"},
     "contract": {"spreadsheet": {"sheetName": "作成用"}, "jobBindings": {}},
     "hearingLog": {"sheetName": "ヒアリング履歴"},
+    # sheetName を空にしておくのが既定。月ごとにタブが増える運用なので、
+    # 読むタブは sheetHint に当たるものの中から最新を自動で選ぶ。
+    # ここに固定のタブ名を書くと、翌月に古いタブを読み続ける
+    "adsPerformance": {"spreadsheet": {"sheetName": "", "sheetHint": "求人単位"}},
     "drive": {},
     "outputSheets": {"variantsPrefix": "訴求案_", "tagAuditPrefix": "タグ診断_",
                      "protectedSheetNames": ["Sheet1"]},
     "allowedEntities": {"companyNames": [], "assignmentSiteNames": []},
 }
 
-# 聞く項目: (見出し, configのパス, 種別, 説明)
+# 聞く項目: (見出し, configのパス, 種別, 説明, 必須か)
 # 種別 sheet_rw は書き込み権限まで確かめる。ここで落としておかないと、
 # 初回の出稿が終わった直後にログ記録だけ失敗し、原因が権限だと気づけない。
 FIELDS = [
     ("Joblist（AirWorkの求人エクスポート）", ("spreadsheet", "id"), "sheet_rw",
      "既存求人を特定して現在値を読む。派遣先名は求人メモ欄から拾う。"
-     "入稿指示ログのタブを足すので編集権限が要る（Sheet1は書き換えない）"),
+     "入稿指示ログのタブを足すので編集権限が要る（Sheet1は書き換えない）", True),
     ("内容確認書", ("contract", "spreadsheet", "id"), "sheet",
-     "派遣先ごとの契約条件。行35（年齢・性別・国籍）は読み込まない"),
+     "派遣先ごとの契約条件。行35（年齢・性別・国籍）は読み込まない", True),
     ("ヒアリング履歴", ("hearingLog", "spreadsheetId"), "sheet_rw",
-     "無ければ先に init_hearing_log.py で作る"),
+     "無ければ先に init_hearing_log.py で作る", True),
     ("出稿用ドキュメントの保存先フォルダ", ("drive", "outputFolderId"), "folder",
-     "「記載項目_派遣先名」をここに作る"),
+     "「記載項目_派遣先名」をここに作る", True),
+    # 任意。ここを登録しておくと、依頼のたびに「実績のURLは？タブ名は？」を
+    # 聞かずに済む。聞く運用にすると毎月のタブ追加で必ず止まる。
+    ("AirWorkの有料広告の実績（任意）", ("adsPerformance", "spreadsheet", "id"), "sheet",
+     "どの欄が効いていないかを数字で判定する。無くても原稿は作れる。"
+     "月ごとにタブを足してよい（読むタブは自動で選ぶ）", False),
 ]
 
 
@@ -158,11 +167,14 @@ def check_folder(drive, fid):
 def verify(cfg, sheets, drive):
     """全項目に実アクセスする。1件でも落ちたら False。"""
     ok = True
-    for label, path, kind, _ in FIELDS:
+    for label, path, kind, _, required in FIELDS:
         val = dig(cfg, path)
         if not val:
-            print(f"  [未設定] {label}")
-            ok = False
+            # 任意項目は未設定でも止めない。止めると、実績がまだ無い会社で
+            # セットアップが終わらなくなる
+            print(f"  [{'未設定' if required else '任意・未設定'}] {label}")
+            if required:
+                ok = False
             continue
         try:
             if kind == "folder":
@@ -205,18 +217,26 @@ def _self_test():
 
     # FIELDS の書き込み先が雛形と噛み合うこと
     probe = json.loads(json.dumps(BLANK_CONFIG))
-    for _, path, kind, _ in FIELDS:
+    for _, path, kind, _, required in FIELDS:
         assert kind in ("sheet", "sheet_rw", "folder"), kind
+        assert isinstance(required, bool), path
         put(probe, path, "X")
         assert dig(probe, path) == "X", path
     assert probe["drive"]["outputFolderId"] == "X"
 
     # Joblist は入稿指示ログのタブを足すので編集権限が要る。
     # ここを sheet に戻すと、初回の出稿が終わった直後まで権限不足に気づけない
-    kinds = {path: kind for _, path, kind, _ in FIELDS}
+    kinds = {path: kind for _, path, kind, _, _ in FIELDS}
     assert kinds[("spreadsheet", "id")] == "sheet_rw"
     assert kinds[("hearingLog", "spreadsheetId")] == "sheet_rw"
     assert kinds[("contract", "spreadsheet", "id")] == "sheet", "内容確認書は読むだけ"
+    assert kinds[("adsPerformance", "spreadsheet", "id")] == "sheet", "広告実績は読むだけ"
+
+    # 広告実績だけが任意。ここを必須に戻すと、実績がまだ無い会社で
+    # セットアップが完了しなくなる
+    req = {path: required for _, path, _, _, required in FIELDS}
+    assert req[("adsPerformance", "spreadsheet", "id")] is False
+    assert all(v for k, v in req.items() if k != ("adsPerformance", "spreadsheet", "id"))
     print("self-test OK")
 
 
@@ -228,6 +248,7 @@ def main():
     p.add_argument("--contract")
     p.add_argument("--hearing")
     p.add_argument("--output-folder")
+    p.add_argument("--ads", help="AirWorkの有料広告実績スプレッドシート（任意）")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -262,10 +283,11 @@ def main():
     given = {("spreadsheet", "id"): a.joblist,
              ("contract", "spreadsheet", "id"): a.contract,
              ("hearingLog", "spreadsheetId"): a.hearing,
-             ("drive", "outputFolderId"): a.output_folder}
+             ("drive", "outputFolderId"): a.output_folder,
+             ("adsPerformance", "spreadsheet", "id"): a.ads}
     non_interactive = a.check or any(given.values())
 
-    for label, path, kind, hint in FIELDS:
+    for label, path, kind, hint, _ in FIELDS:
         if a.check:
             continue
         raw = given.get(path)
