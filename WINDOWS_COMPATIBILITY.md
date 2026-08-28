@@ -22,3 +22,9 @@
 
 - 元の配布物をローカルへ展開済み
 - Windows専用の一時領域処理を実装済み。次は Node.js 向けの同等処理と、Python / Node の起動確認を実施する
+
+## この端末での検証メモ（2026-08-28）
+
+- Node.js 20、Python 3.14、Git for Windows を確認した。
+- Git履歴は `windows-native-compat` ブランチに保存する。配布元へは自動送信しない。
+- Google APIライブラリ（`google-api-python-client`、`google-auth`）の取得は、Python から PyPI へ接続する際に Windows のソケット権限エラー（WinError 10013）で止まった。これはスキルの互換コードでは回避しない。端末のネットワーク方針またはプロキシを整えた後に、Python環境へ同ライブラリを入れてからGoogle連携を検証する。

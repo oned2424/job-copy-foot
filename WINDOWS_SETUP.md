@@ -46,3 +46,7 @@ Codex のチャットで、次の7項目を伝えます。Codex が必要な処�
 ## ブランチと更新
 
 このフォルダは配布元の main を直接変更しません。Git for Windows の導入後に、windows-native-compat ブランチで変更理由と互換処理を記録します。配布元が更新されたら、その変更を確認してこの互換版へ反映します。
+
+## Google連携用ライブラリ
+
+Google スプレッドシートと Google ドキュメントを扱うには、Python に google-api-python-client と google-auth が必要です。この端末では PyPI への接続が Windows のネットワーク権限で拒否されたため、ネットワーク方針またはプロキシの設定後に導入します。これは Googleアカウントの権限とは別の、Pythonからの外部通信に関する端末設定です。
